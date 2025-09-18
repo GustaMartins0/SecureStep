@@ -8,9 +8,11 @@ import Login from './screens/Login';
 import Cadastro from './screens/Cadastro';
 import EsqueceuSenha from './screens/EsqueceuSenha';
 import Inicio from './screens/Inicio';
+import Atividades from './screens/Atividades';
 import HistoricoLocalizacao from './screens/HistoricoLocalizacao';
 import HistoricoBotao from './screens/HistoricoBotao';
 import Perfil from './screens/Perfil';
+
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -19,8 +21,7 @@ function MainTabs() {
   return (
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Inicio" component={Inicio} />
-      <Tab.Screen name="HistoricoLocalizacao" component={HistoricoLocalizacao} />
-      <Tab.Screen name="HistoricoBotao" component={HistoricoBotao} />
+      <Tab.Screen name="Atividades" component={Atividades} />
       <Tab.Screen name="Perfil" component={Perfil} />
     </Tab.Navigator>
   );
@@ -35,6 +36,8 @@ export default function App() {
         <Stack.Screen name="Cadastro" component={Cadastro} />
         <Stack.Screen name="EsqueceuSenha" component={EsqueceuSenha} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="HistoricoLocalizacao" component={HistoricoLocalizacao} />
+        <Stack.Screen name="HistoricoBotao" component={HistoricoBotao} />
       </Stack.Navigator>
     </NavigationContainer>
   );
