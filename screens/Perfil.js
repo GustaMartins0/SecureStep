@@ -25,7 +25,7 @@ export default function Perfil({ navigation }) {
         <Text style={styles.info}>martins@martins.com</Text>
       </View>
 
-      {/* Link de senha */}
+      {}
       <TouchableOpacity onPress={() => navigation.navigate('EsqueceuSenha')} style={styles.leftAlign}>
         <Text style={styles.link}>Esqueceu sua senha?</Text>
       </TouchableOpacity>
