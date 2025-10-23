@@ -228,7 +228,7 @@ export default function Inicio() {
         </View>
       </View>
 
-      {/* Local desejado */}
+      {/* Local desejado*/}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Local desejado</Text>
         <TouchableOpacity style={styles.micButton}>
