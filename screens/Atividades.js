@@ -23,7 +23,10 @@ export default function Atividades() {
       {/* Cabeçalho */}
       <View style={styles.header}>
         <Text style={styles.title}>Atividades</Text>
-        <Ionicons name="person-circle-outline" size={36} color="white" />
+        {/* changed: ícone agora é um botão que redireciona para a tela Perfil */}
+        <TouchableOpacity onPress={() => navigation.navigate('Perfil')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="person-circle-outline" size={36} color="white" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll}>
@@ -76,14 +79,14 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: '#011a1f', // cor de fundo única
-   
+    paddingTop: 30, // adicionado: distância do topo aplicada em toda a tela
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    marginTop: 10,
+    marginTop: 0, // ajustado: removido margin extra para não somar com paddingTop
     backgroundColor: '#011a1f', // garante fundo igual
   },
   title: { color: 'white', fontSize: 20, fontWeight: 'bold' },

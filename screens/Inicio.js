@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Linking
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 
+
 export default function Inicio() {
   const [location, setLocation] = useState(null);
   const [MapComponents, setMapComponents] = useState({ MapView: null, Marker: null });

@@ -41,7 +41,7 @@ export default function EsqueceuSenha({ navigation }) {
 
       {/* Voltar para Login */}
       <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.link}>Voltar para Login</Text>
+        <Text style={styles.link}>Voltar</Text>
       </TouchableOpacity>
     </View>
   );

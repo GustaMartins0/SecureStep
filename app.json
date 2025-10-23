@@ -1,5 +1,10 @@
 {
   "android": {
     "package": "com.anonymous.securestep"
+  },
+  "extra": {
+    "eas": {
+      "projectId": "7f53277e-6de4-4f4d-b497-b8e4bcc8ec01"
+    }
   }
 }
