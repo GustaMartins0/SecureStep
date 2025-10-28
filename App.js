@@ -1,13 +1,10 @@
 import React from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
 
-
-
-
-// Screens
 import SplashScreen from './screens/SplashScreen';
 import Login from './screens/Login';
 import Cadastro from './screens/Cadastro';
@@ -21,7 +18,6 @@ import Perfil from './screens/Perfil';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Bottom Tabs
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -29,13 +25,13 @@ function MainTabs() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          position: 'absolute',   // permite flutuar
-          bottom: 20,             // distância da borda inferior
-          left: 20,               // distância da borda lateral esquerda
-          right: 20,              // distância da borda lateral direita
-          elevation: 5,           // sombra no Android
-          backgroundColor: '#000', 
-          borderRadius: 15,       // bordas arredondadas
+          position: 'absolute',
+          bottom: 20,
+          left: 20,
+          right: 20,
+          elevation: 5,
+          backgroundColor: '#000',
+          borderRadius: 15,
           height: 60,
         },
         tabBarActiveTintColor: '#fff',
@@ -73,23 +69,23 @@ function MainTabs() {
   );
 }
 
-
-// Main App
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="SplashScreen"
-        screenOptions={{ headerShown: false }}
-      >
-        <Stack.Screen name="SplashScreen" component={SplashScreen} />
-        <Stack.Screen name="Login" component={Login} />
-        <Stack.Screen name="Cadastro" component={Cadastro} />
-        <Stack.Screen name="EsqueceuSenha" component={EsqueceuSenha} />
-        <Stack.Screen name="MainTabs" component={MainTabs} />
-        <Stack.Screen name="HistoricoLocalizacao" component={HistoricoLocalizacao} />
-        <Stack.Screen name="HistoricoBotao" component={HistoricoBotao} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName="SplashScreen"
+          screenOptions={{ headerShown: false }}
+        >
+          <Stack.Screen name="SplashScreen" component={SplashScreen} />
+          <Stack.Screen name="Login" component={Login} />
+          <Stack.Screen name="Cadastro" component={Cadastro} />
+          <Stack.Screen name="EsqueceuSenha" component={EsqueceuSenha} />
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <Stack.Screen name="HistoricoLocalizacao" component={HistoricoLocalizacao} />
+          <Stack.Screen name="HistoricoBotao" component={HistoricoBotao} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

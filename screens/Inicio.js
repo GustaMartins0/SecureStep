@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+
 import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Linking } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -159,10 +160,109 @@ export default function Inicio() {
     }
   };
   
+  // Adicione a função para abrir rotas para locais específicos
+  const openRouteTo = async (query) => {
+    try {
+      let coords;
+      if (Platform.OS === 'web') {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&limit=1`
+        );
+        const result = await response.json();
+        if (result && result.length > 0) {
+          coords = { latitude: parseFloat(result[0].lat), longitude: parseFloat(result[0].lon) };
+        }
+      } else {
+        const geocode = await Location.geocodeAsync(query);
+        if (geocode && geocode.length > 0) {
+          coords = { latitude: geocode[0].latitude, longitude: geocode[0].longitude };
+        }
+      }
+      if (coords) {
+        const origin = `${location.coords.latitude},${location.coords.longitude}`;
+        const destination = `${coords.latitude},${coords.longitude}`;
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
+        if (Platform.OS === 'web') {
+          window.open(url, '_blank');
+        } else {
+          Linking.openURL(url);
+        }
+      }
+    } catch (err) {
+      console.log('Erro ao abrir rota:', err);
+    }
+  };
+  
+  // Adicione a função para calcular a distância para locais específicos
+  const calculateDistance = (query) => {
+    if (!location || !location.coords) return null;
+
+    const predefinedLocations = {
+      'Supermercado Shibata': { latitude: -23.101, longitude: -45.705 },
+      'Praça da Bandeira': { latitude: -23.100, longitude: -45.710 },
+      'Igreja Matriz': { latitude: -23.102, longitude: -45.708 },
+    };
+
+    const dest = predefinedLocations[query];
+    if (!dest) return null;
+
+    const distance = haversineDistance(
+      location.coords.latitude,
+      location.coords.longitude,
+      dest.latitude,
+      dest.longitude
+    );
+
+    return distance < 1000 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)} km`;
+  };
+  
+  // Função para processar o comando de voz
+  const handleVoiceCommand = async () => {
+    try {
+      const isAvailable = await SpeechRecognition.isAvailableAsync();
+      if (!isAvailable) {
+        alert('Reconhecimento de voz não está disponível no dispositivo.');
+        return;
+      }
+
+      const { granted } = await SpeechRecognition.requestPermissionsAsync();
+      if (!granted) {
+        alert('Permissão para usar o microfone foi negada.');
+        return;
+      }
+
+      const result = await SpeechRecognition.startAsync();
+      if (result && result.transcripts && result.transcripts.length > 0) {
+        const command = result.transcripts[0].text.toLowerCase();
+        console.log('Comando de voz:', command);
+
+        // Processar o comando e definir a nova rota
+        const predefinedLocations = {
+          'supermercado shibata': 'Supermercado Shibata, Caçapava, São Paulo',
+          'praça da bandeira': 'Praça da Bandeira, Caçapava, São Paulo',
+          'igreja matriz': 'Igreja Matriz, Caçapava, São Paulo',
+        };
+
+        const query = Object.keys(predefinedLocations).find((key) =>
+          command.includes(key)
+        );
+
+        if (query) {
+          openRouteTo(predefinedLocations[query]);
+        } else {
+          alert('Local não reconhecido. Tente novamente.');
+        }
+      }
+    } catch (err) {
+      console.log('Erro ao processar comando de voz:', err);
+      alert('Erro ao processar comando de voz. Tente novamente.');
+    }
+  };
+
   const { MapView, Marker } = MapComponents;
   
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
       {/* Header */}
       <View style={styles.header}>
         <Ionicons name="eye-outline" size={30} color="#fff" />
@@ -201,6 +301,7 @@ export default function Inicio() {
                   longitudeDelta: 0.01,
                 }}
               >
+                {/* Marcador da localização atual */}
                 <Marker
                   coordinate={{
                     latitude: location.coords.latitude,
@@ -208,6 +309,8 @@ export default function Inicio() {
                   }}
                   title="Você está aqui"
                 />
+
+                {/* Marcador do Terminal Rodoviária */}
                 {destCoords && (
                   <Marker
                     coordinate={{ latitude: destCoords.latitude, longitude: destCoords.longitude }}
@@ -215,6 +318,23 @@ export default function Inicio() {
                     title={destName}
                   />
                 )}
+
+                {/* Marcadores dos locais mais frequentados */}
+                <Marker
+                  coordinate={{ latitude: -23.101, longitude: -45.706 }} // Coordenadas corrigidas
+                  pinColor="blue"
+                  title="Supermercado Shibata"
+                />
+                <Marker
+                  coordinate={{ latitude: -23.100, longitude: -45.710 }}
+                  pinColor="blue"
+                  title="Praça da Bandeira"
+                />
+                <Marker
+                  coordinate={{ latitude: -23.102, longitude: -45.708 }}
+                  pinColor="blue"
+                  title="Igreja Matriz"
+                />
               </MapView>
             )
           )
@@ -228,16 +348,56 @@ export default function Inicio() {
         </View>
       </View>
 
-      {/* Local desejado*/}
+      {/* Local desejado */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Local desejado</Text>
-        <TouchableOpacity style={styles.micButton}>
+        <TouchableOpacity style={styles.micButton} onPress={handleVoiceCommand}>
           <MaterialIcons name="keyboard-voice" size={32} color="white" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={openRoute} style={{ marginTop: 6 }}>
+      </View>
+
+      {/* Locais mais frequentados */}
+      <View style={[styles.section, { marginTop: 7 }]}>
+        <Text style={styles.sectionTitle}>Locais mais frequentados</Text>
+
+        {/* Terminal Rodoviária */}
+        <TouchableOpacity onPress={openRoute} style={{ marginTop: 9 }}>
           <View style={styles.infoRow}>
             <Text style={styles.endereco}>{destName}</Text>
             <Text style={styles.distancia}>{distanceStr || '...'} </Text>
+          </View>
+          <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
+            Toque para abrir rota no Maps
+          </Text>
+        </TouchableOpacity>
+
+        {/* Supermercado Shibata */}
+        <TouchableOpacity onPress={() => openRouteTo('Supermercado Shibata, Caçapava, São Paulo')} style={{ marginTop: 20 }}>
+          <View style={styles.infoRow}>
+            <Text style={styles.endereco}>Supermercado Shibata</Text>
+            <Text style={styles.distancia}>{calculateDistance('Supermercado Shibata') || '...'} </Text>
+          </View>
+          <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
+            Toque para abrir rota no Maps
+          </Text>
+        </TouchableOpacity>
+
+        {/* Praça da Bandeira */}
+        <TouchableOpacity onPress={() => openRouteTo('Praça da Bandeira, Caçapava, São Paulo')} style={{ marginTop: 20 }}>
+          <View style={styles.infoRow}>
+            <Text style={styles.endereco}>Praça da Bandeira</Text>
+            <Text style={styles.distancia}>{calculateDistance('Praça da Bandeira') || '...'} </Text>
+          </View>
+          <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
+            Toque para abrir rota no Maps
+          </Text>
+        </TouchableOpacity>
+
+        {/* Igreja Matriz */}
+        <TouchableOpacity onPress={() => openRouteTo('Igreja Matriz, Caçapava, São Paulo')} style={{ marginTop: 20 }}>
+          <View style={styles.infoRow}>
+            <Text style={styles.endereco}>Igreja Matriz</Text>
+            <Text style={styles.distancia}>{calculateDistance('Igreja Matriz') || '...'} </Text>
           </View>
           <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
             Toque para abrir rota no Maps

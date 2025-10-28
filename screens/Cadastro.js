@@ -45,7 +45,10 @@ export default function Cadastro({ navigation }) {
       />
 
       {/* Botão Cadastrar */}
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={() => navigation.navigate('Login')}
+      >
         <Text style={styles.buttonText}>Cadastrar</Text>
       </TouchableOpacity>
 
