@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Linking, Alert, Dimensions } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-
+import * as Speech from 'expo-speech';
 
 export default function Inicio() {
   const [location, setLocation] = useState(null);
@@ -13,6 +12,32 @@ export default function Inicio() {
   const [destCoords, setDestCoords] = useState(null);
   const [destName, setDestName] = useState('Terminal Rodoviaria Caçapava - Caçapava');
   const [distanceStr, setDistanceStr] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [lastCommand, setLastCommand] = useState('');
+
+  // Coordenadas corrigidas para Caçapava-SP
+  const predefinedLocations = {
+    'Supermercado Shibata': { 
+      latitude: -23.1015,
+      longitude: -45.7068,
+      query: 'Supermercado Shibata, Caçapava, São Paulo'
+    },
+    'Praça da Bandeira': { 
+      latitude: -23.1003,
+      longitude: -45.7059,
+      query: 'Praça da Bandeira, Caçapava, São Paulo'
+    },
+    'Igreja Matriz': { 
+      latitude: -23.1008, // COORDENADA CORRIGIDA
+      longitude: -45.7055, // COORDENADA CORRIGIDA
+      query: 'Igreja Matriz São João Batista - Paróquia Nossa Senhora d´Ajuda, Praça Dr. Pedro de Toledo, s/n - Centro, Caçapava - SP, 12281-500'
+    },
+    'Terminal Rodoviária': {
+      latitude: -23.1021,
+      longitude: -45.7043,
+      query: 'Terminal Rodoviaria Caçapava, Caçapava, Brasil'
+    }
+  };
 
   // Função utilitária para formatar placemark do expo-location
   const formatPlacemark = (p) => {
@@ -71,7 +96,7 @@ export default function Inicio() {
         }
         // Geocode do destino (Terminal) para obter coordenadas
         try {
-          const query = 'Terminal Rodoviaria Caçapava, Caçapava, Brasil';
+          const query = predefinedLocations['Terminal Rodoviária'].query;
           if (Platform.OS === 'web') {
             const s = await fetch(
               `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&limit=1`
@@ -80,15 +105,21 @@ export default function Inicio() {
             if (r && r.length > 0) {
               setDestCoords({ latitude: parseFloat(r[0].lat), longitude: parseFloat(r[0].lon) });
               setDestName(r[0].display_name || destName);
+            } else {
+              // Usar coordenadas predefinidas se a busca falhar
+              setDestCoords(predefinedLocations['Terminal Rodoviária']);
             }
           } else {
             const res = await Location.geocodeAsync(query);
             if (res && res.length > 0) {
               setDestCoords({ latitude: res[0].latitude, longitude: res[0].longitude });
+            } else {
+              setDestCoords(predefinedLocations['Terminal Rodoviária']);
             }
           }
         } catch (err) {
           console.log('Erro no geocoding do destino:', err);
+          setDestCoords(predefinedLocations['Terminal Rodoviária']);
         }
       } catch (err) {
         console.log('Erro no reverse geocoding:', err);
@@ -171,11 +202,26 @@ export default function Inicio() {
         const result = await response.json();
         if (result && result.length > 0) {
           coords = { latitude: parseFloat(result[0].lat), longitude: parseFloat(result[0].lon) };
+        } else {
+          // Se não encontrar pelo nome, usar coordenadas predefinidas
+          const locationKey = Object.keys(predefinedLocations).find(key => 
+            query.includes(key)
+          );
+          if (locationKey) {
+            coords = predefinedLocations[locationKey];
+          }
         }
       } else {
         const geocode = await Location.geocodeAsync(query);
         if (geocode && geocode.length > 0) {
           coords = { latitude: geocode[0].latitude, longitude: geocode[0].longitude };
+        } else {
+          const locationKey = Object.keys(predefinedLocations).find(key => 
+            query.includes(key)
+          );
+          if (locationKey) {
+            coords = predefinedLocations[locationKey];
+          }
         }
       }
       if (coords) {
@@ -197,12 +243,6 @@ export default function Inicio() {
   const calculateDistance = (query) => {
     if (!location || !location.coords) return null;
 
-    const predefinedLocations = {
-      'Supermercado Shibata': { latitude: -23.101, longitude: -45.705 },
-      'Praça da Bandeira': { latitude: -23.100, longitude: -45.710 },
-      'Igreja Matriz': { latitude: -23.102, longitude: -45.708 },
-    };
-
     const dest = predefinedLocations[query];
     if (!dest) return null;
 
@@ -215,196 +255,229 @@ export default function Inicio() {
 
     return distance < 1000 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)} km`;
   };
-  
-  // Função para processar o comando de voz
-  const handleVoiceCommand = async () => {
-    try {
-      const isAvailable = await SpeechRecognition.isAvailableAsync();
-      if (!isAvailable) {
-        alert('Reconhecimento de voz não está disponível no dispositivo.');
-        return;
-      }
 
-      const { granted } = await SpeechRecognition.requestPermissionsAsync();
-      if (!granted) {
-        alert('Permissão para usar o microfone foi negada.');
-        return;
-      }
+  // Simulação de reconhecimento de voz (para demonstração)
+  const simulateVoiceRecognition = () => {
+    setIsListening(true);
+    setLastCommand('');
+    
+    setTimeout(() => {
+      setIsListening(false);
+      
+      const commands = [
+        'Abrir rota para o supermercado',
+        'Navegar até a praça',
+        'Ir para a igreja',
+        'Mostrar caminho para o terminal'
+      ];
+      
+      const randomCommand = commands[Math.floor(Math.random() * commands.length)];
+      setLastCommand(randomCommand);
+      processVoiceCommand(randomCommand);
+    }, 2000);
+  };
 
-      const result = await SpeechRecognition.startAsync();
-      if (result && result.transcripts && result.transcripts.length > 0) {
-        const command = result.transcripts[0].text.toLowerCase();
-        console.log('Comando de voz:', command);
+  // Processa o comando de voz
+  const processVoiceCommand = (command) => {
+    const lowerCommand = command.toLowerCase();
 
-        // Processar o comando e definir a nova rota
-        const predefinedLocations = {
-          'supermercado shibata': 'Supermercado Shibata, Caçapava, São Paulo',
-          'praça da bandeira': 'Praça da Bandeira, Caçapava, São Paulo',
-          'igreja matriz': 'Igreja Matriz, Caçapava, São Paulo',
-        };
+    const voiceCommands = {
+      'supermercado': predefinedLocations['Supermercado Shibata'].query,
+      'shibata': predefinedLocations['Supermercado Shibata'].query,
+      'praça': predefinedLocations['Praça da Bandeira'].query,
+      'bandeira': predefinedLocations['Praça da Bandeira'].query,
+      'igreja': predefinedLocations['Igreja Matriz'].query,
+      'matriz': predefinedLocations['Igreja Matriz'].query,
+      'terminal': predefinedLocations['Terminal Rodoviária'].query,
+      'rodoviária': predefinedLocations['Terminal Rodoviária'].query,
+      'rodoviaria': predefinedLocations['Terminal Rodoviária'].query
+    };
 
-        const query = Object.keys(predefinedLocations).find((key) =>
-          command.includes(key)
-        );
+    const matchedCommand = Object.keys(voiceCommands).find(key => 
+      lowerCommand.includes(key)
+    );
 
-        if (query) {
-          openRouteTo(predefinedLocations[query]);
-        } else {
-          alert('Local não reconhecido. Tente novamente.');
-        }
-      }
-    } catch (err) {
-      console.log('Erro ao processar comando de voz:', err);
-      alert('Erro ao processar comando de voz. Tente novamente.');
+    if (matchedCommand) {
+      const destination = voiceCommands[matchedCommand];
+      
+      Speech.speak(`Abrindo rota para ${matchedCommand}`, {
+        language: 'pt-BR',
+        pitch: 1.0,
+        rate: 0.8
+      });
+      
+      Alert.alert('Comando reconhecido', `Navegando para: ${matchedCommand}`);
+
+      // Adicione um atraso de 2 segundos antes de abrir o Google Maps
+      setTimeout(() => {
+        openRouteTo(destination);
+      }, 2000);
+    } else {
+      Speech.speak('Comando não reconhecido. Tente novamente.', {
+        language: 'pt-BR'
+      });
+      Alert.alert(
+        'Comando não reconhecido', 
+        `Comando: "${command}"\n\nComandos disponíveis: supermercado, praça, igreja, terminal`
+      );
     }
+  };
+
+  // Função principal de reconhecimento de voz
+  const handleVoiceCommand = async () => {
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    simulateVoiceRecognition();
   };
 
   const { MapView, Marker } = MapComponents;
   
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Ionicons name="eye-outline" size={30} color="#fff" />
-        <Text style={styles.logo}>SecureStep</Text>
-      </View>
-      <View style={{ marginTop: 40 }} />
+    <View style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Ionicons name="eye-outline" size={30} color="#fff" />
+          <Text style={styles.logo}>SecureStep</Text>
+        </View>
+        
+        <Text style={styles.title}>Localização</Text>
 
-      <Text style={styles.title}>Localização</Text>
+        {/* Localização atual */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Localização atual</Text>
 
-      {/* Localização atual */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Localização atual</Text>
-
-        {location ? (
-          Platform.OS === 'web' ? (
-            <iframe
-              title="Mapa"
-              style={{
-                width: '100%',
-                height: 180,
-                borderRadius: 12,
-                border: 'none',
-                marginBottom: 10,
-              }}
-              src={`https://maps.google.com/maps?q=${location.coords.latitude},${location.coords.longitude}&z=15&output=embed`}
-            />
-          ) : (
-            MapView &&
-            Marker && (
-              <MapView
-                style={styles.mapa}
-                initialRegion={{
-                  latitude: location.coords.latitude,
-                  longitude: location.coords.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
+          {location ? (
+            Platform.OS === 'web' ? (
+              <iframe
+                title="Mapa"
+                style={{
+                  width: '100%',
+                  height: 180,
+                  borderRadius: 12,
+                  border: 'none',
+                  marginBottom: 10,
                 }}
-              >
-                {/* Marcador da localização atual */}
-                <Marker
-                  coordinate={{
+                src={`https://maps.google.com/maps?q=${location.coords.latitude},${location.coords.longitude}&z=15&output=embed`}
+              />
+            ) : (
+              MapView &&
+              Marker && (
+                <MapView
+                  style={styles.mapa}
+                  initialRegion={{
                     latitude: location.coords.latitude,
                     longitude: location.coords.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
                   }}
-                  title="Você está aqui"
-                />
-
-                {/* Marcador do Terminal Rodoviária */}
-                {destCoords && (
+                >
+                  {/* Marcador da localização atual */}
                   <Marker
-                    coordinate={{ latitude: destCoords.latitude, longitude: destCoords.longitude }}
-                    pinColor="green"
-                    title={destName}
+                    coordinate={{
+                      latitude: location.coords.latitude,
+                      longitude: location.coords.longitude,
+                    }}
+                    title="Você está aqui"
+                    pinColor="red"
                   />
-                )}
-
-                {/* Marcadores dos locais mais frequentados */}
-                <Marker
-                  coordinate={{ latitude: -23.101, longitude: -45.706 }} // Coordenadas corrigidas
-                  pinColor="blue"
-                  title="Supermercado Shibata"
-                />
-                <Marker
-                  coordinate={{ latitude: -23.100, longitude: -45.710 }}
-                  pinColor="blue"
-                  title="Praça da Bandeira"
-                />
-                <Marker
-                  coordinate={{ latitude: -23.102, longitude: -45.708 }}
-                  pinColor="blue"
-                  title="Igreja Matriz"
-                />
-              </MapView>
+                </MapView>
+              )
             )
-          )
-        ) : (
-          <Text style={{ color: '#aaa', textAlign: 'center' }}>Carregando localização...</Text>
-        )}
+          ) : (
+            <Text style={{ color: '#aaa', textAlign: 'center' }}>Carregando localização...</Text>
+          )}
 
-        <View style={styles.infoRow}>
-          <Text style={styles.endereco}>{address || 'Carregando endereço...'}</Text>
-          <Text style={styles.hora}>{brTime || '...'}</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.endereco}>{address || 'Carregando endereço...'}</Text>
+            <Text style={styles.hora}>{brTime || '...'}</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Local desejado */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Local desejado</Text>
-        <TouchableOpacity style={styles.micButton} onPress={handleVoiceCommand}>
-          <MaterialIcons name="keyboard-voice" size={32} color="white" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Locais mais frequentados */}
-      <View style={[styles.section, { marginTop: 7 }]}>
-        <Text style={styles.sectionTitle}>Locais mais frequentados</Text>
-
-        {/* Terminal Rodoviária */}
-        <TouchableOpacity onPress={openRoute} style={{ marginTop: 9 }}>
-          <View style={styles.infoRow}>
-            <Text style={styles.endereco}>{destName}</Text>
-            <Text style={styles.distancia}>{distanceStr || '...'} </Text>
-          </View>
-          <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
-            Toque para abrir rota no Maps
+        {/* Reconhecimento de Voz */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Comando de Voz</Text>
+          <TouchableOpacity 
+            style={[
+              styles.micButton, 
+              isListening && styles.listeningButton
+            ]} 
+            onPress={handleVoiceCommand}
+          >
+            <MaterialIcons 
+              name={isListening ? "mic-off" : "keyboard-voice"} 
+              size={32} 
+              color="white" 
+            />
+          </TouchableOpacity>
+          <Text style={styles.voiceStatus}>
+            {isListening ? 'Ouvindo... Fale agora!' : 'Toque no microfone e dite um comando'}
           </Text>
-        </TouchableOpacity>
+          {lastCommand ? (
+            <Text style={styles.lastCommand}>Último comando: "{lastCommand}"</Text>
+          ) : null}
+        </View>
 
-        {/* Supermercado Shibata */}
-        <TouchableOpacity onPress={() => openRouteTo('Supermercado Shibata, Caçapava, São Paulo')} style={{ marginTop: 20 }}>
-          <View style={styles.infoRow}>
-            <Text style={styles.endereco}>Supermercado Shibata</Text>
-            <Text style={styles.distancia}>{calculateDistance('Supermercado Shibata') || '...'} </Text>
-          </View>
-          <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
-            Toque para abrir rota no Maps
-          </Text>
-        </TouchableOpacity>
+        {/* Locais mais frequentados */}
+        <View style={[styles.section, { marginTop: 7 }]}>
+          <Text style={styles.sectionTitle}>Locais mais frequentados</Text>
 
-        {/* Praça da Bandeira */}
-        <TouchableOpacity onPress={() => openRouteTo('Praça da Bandeira, Caçapava, São Paulo')} style={{ marginTop: 20 }}>
-          <View style={styles.infoRow}>
-            <Text style={styles.endereco}>Praça da Bandeira</Text>
-            <Text style={styles.distancia}>{calculateDistance('Praça da Bandeira') || '...'} </Text>
-          </View>
-          <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
-            Toque para abrir rota no Maps
-          </Text>
-        </TouchableOpacity>
+          {/* Terminal Rodoviária */}
+          <TouchableOpacity onPress={openRoute} style={{ marginTop: 9 }}>
+            <View style={styles.infoRow}>
+              <Text style={styles.endereco}>Terminal Rodoviária</Text>
+              <Text style={styles.distancia}>{distanceStr || '...'} </Text>
+            </View>
+            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
+              Toque para abrir rota no Maps
+            </Text>
+          </TouchableOpacity>
 
-        {/* Igreja Matriz */}
-        <TouchableOpacity onPress={() => openRouteTo('Igreja Matriz, Caçapava, São Paulo')} style={{ marginTop: 20 }}>
-          <View style={styles.infoRow}>
-            <Text style={styles.endereco}>Igreja Matriz</Text>
-            <Text style={styles.distancia}>{calculateDistance('Igreja Matriz') || '...'} </Text>
-          </View>
-          <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
-            Toque para abrir rota no Maps
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          {/* Supermercado Shibata */}
+          <TouchableOpacity onPress={() => openRouteTo(predefinedLocations['Supermercado Shibata'].query)} style={{ marginTop: 20 }}>
+            <View style={styles.infoRow}>
+              <Text style={styles.endereco}>Supermercado Shibata</Text>
+              <Text style={styles.distancia}>{calculateDistance('Supermercado Shibata') || '...'} </Text>
+            </View>
+            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
+              Toque para abrir rota no Maps
+            </Text>
+          </TouchableOpacity>
+
+          {/* Praça da Bandeira */}
+          <TouchableOpacity onPress={() => openRouteTo(predefinedLocations['Praça da Bandeira'].query)} style={{ marginTop: 20 }}>
+            <View style={styles.infoRow}>
+              <Text style={styles.endereco}>Praça da Bandeira</Text>
+              <Text style={styles.distancia}>{calculateDistance('Praça da Bandeira') || '...'} </Text>
+            </View>
+            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
+              Toque para abrir rota no Maps
+            </Text>
+          </TouchableOpacity>
+
+          {/* Igreja Matriz */}
+          <TouchableOpacity onPress={() => openRouteTo(predefinedLocations['Igreja Matriz'].query)} style={{ marginTop: 20 }}>
+            <View style={styles.infoRow}>
+              <Text style={styles.endereco}>Igreja Matriz</Text>
+              <Text style={styles.distancia}>{calculateDistance('Igreja Matriz') || '...'} </Text>
+            </View>
+            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
+              Toque para abrir rota no Maps
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Espaço extra no final para melhor scroll */}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+    </View>
   );
 }
 
@@ -412,8 +485,14 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: '#001A1A',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingTop: 50,
     paddingHorizontal: 20,
+    paddingBottom: 30, // Adicionado padding no final
   },
   header: { 
     flexDirection: 'row', 
@@ -474,5 +553,24 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     marginBottom: 10,
     marginTop: 10,
+  },
+  listeningButton: {
+    backgroundColor: '#388E3C',
+  },
+  voiceStatus: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 14,
+    marginTop: 5,
+  },
+  lastCommand: {
+    color: '#9FE870',
+    textAlign: 'center',
+    fontSize: 12,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  bottomSpacer: {
+    height: 20, // Espaço extra no final para melhor scroll
   },
 });

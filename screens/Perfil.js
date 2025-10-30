@@ -1,8 +1,18 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, SafeAreaView, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, SafeAreaView, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Perfil({ navigation }) {
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const handleNotificationResponse = (response) => {
+    setModalVisible(false);
+    Alert.alert(
+      'Notificações',
+      response ? 'Você aceitou receber notificações.' : 'Você recusou receber notificações.'
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#011a1f' }}>
       <ScrollView
@@ -71,7 +81,10 @@ export default function Perfil({ navigation }) {
             <Ionicons name="chevron-forward" size={20} color="#9FE870" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => setModalVisible(true)}
+          >
             <View style={styles.actionContent}>
               <View style={[styles.actionIcon, { backgroundColor: '#022b35' }]}>
                 <Ionicons name="notifications-outline" size={20} color="#9FE870" />
@@ -79,19 +92,6 @@ export default function Perfil({ navigation }) {
               <View style={styles.actionText}>
                 <Text style={styles.actionTitle}>Notificações</Text>
                 <Text style={styles.actionSubtitle}>Gerencie suas notificações</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9FE870" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <View style={styles.actionContent}>
-              <View style={[styles.actionIcon, { backgroundColor: '#022b35' }]}>
-                <Ionicons name="shield-checkmark-outline" size={20} color="#9FE870" />
-              </View>
-              <View style={styles.actionText}>
-                <Text style={styles.actionTitle}>Privacidade</Text>
-                <Text style={styles.actionSubtitle}>Controle sua privacidade</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9FE870" />
@@ -107,6 +107,30 @@ export default function Perfil({ navigation }) {
           <Text style={styles.logoutText}>Sair da Conta</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal para notificações */}
+      {modalVisible && (
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Notificações</Text>
+            <Text style={styles.modalMessage}>Você aceita receber notificações?</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#388E3C' }]}
+                onPress={() => handleNotificationResponse(true)}
+              >
+                <Text style={styles.modalButtonText}>Aceitar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#D32F2F' }]}
+                onPress={() => handleNotificationResponse(false)}
+              >
+                <Text style={styles.modalButtonText}>Recusar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -264,5 +288,51 @@ const styles = StyleSheet.create({
     color: '#e53935',
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#022b35',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  modalMessage: {
+    color: '#aaa',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

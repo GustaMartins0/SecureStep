@@ -1,10 +1,22 @@
 {
-  "android": {
-    "package": "com.anonymous.securestep"
-  },
-  "extra": {
-    "eas": {
-      "projectId": "7f53277e-6de4-4f4d-b497-b8e4bcc8ec01"
-    }
+  "expo": {
+    "name": "SecureStep",
+    "slug": "securestep",
+    "android": {
+      "package": "com.anonymous.securestep"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7f53277e-6de4-4f4d-b497-b8e4bcc8ec01"
+      }
+    },
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "O aplicativo precisa acessar o microfone para reconhecer comandos de voz."
+        }
+      ]
+    ]
   }
 }
