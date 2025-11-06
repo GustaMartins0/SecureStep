@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons'; // ícones
-import { useNavigation } from '@react-navigation/native'; // importação adicionada
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const caminhos = [
   { id: '1', endereco: 'Rua Manoel, Bairro Residencial Galo Preto', horario: '16:30' },
@@ -16,97 +16,125 @@ const botoes = [
 ];
 
 export default function Atividades() {
-  const navigation = useNavigation(); // hook de navegação
+  const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
-      {/* Cabeçalho */}
+
+      {/* --- CABEÇALHO --- */}
       <View style={styles.header}>
         <Text style={styles.title}>Atividades</Text>
-        {/* changed: ícone agora é um botão que redireciona para a tela Perfil */}
-        <TouchableOpacity onPress={() => navigation.navigate('Perfil')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="person-circle-outline" size={36} color="white" />
+
+        <TouchableOpacity onPress={() => navigation.navigate('Perfil')}>
+          <Ionicons name="person-circle-outline" size={42} color="#B2FF59" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll}>
-        {/* Por onde você andou */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Por onde você andou</Text>
-            <MaterialIcons name="location-pin" size={24} color="#B2FF59" />
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* --- CARD 1: Caminhos --- */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Por onde você andou</Text>
+            <MaterialIcons name="location-on" size={26} color="#B2FF59" />
           </View>
+
           {caminhos.map((item) => (
-            <View key={item.id} style={styles.item}>
-              <Text style={styles.endereco}>{item.endereco}</Text>
-              <Text style={styles.horario}>{item.horario}</Text>
+            <View key={item.id} style={styles.itemRow}>
+              <Text style={styles.textPrimary}>{item.endereco}</Text>
+              <Text style={styles.textSecondary}>{item.horario}</Text>
             </View>
           ))}
-          <View style={styles.verMaisContainer}>
-            <TouchableOpacity onPress={() => navigation.navigate('HistoricoLocalizacao')}>
-              <Text style={styles.verMais}>Ver mais</Text>
-            </TouchableOpacity>
-          </View>
+
+          <TouchableOpacity 
+            style={styles.moreButton} 
+            onPress={() => navigation.navigate('HistoricoLocalizacao')}
+          >
+            <Text style={styles.moreText}>Ver mais</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Histórico de botão apertados */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Historico de botão apertados</Text>
-            <MaterialIcons name="touch-app" size={24} color="#B2FF59" />
+        {/* --- CARD 2: Botões apertados --- */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Histórico de botões apertados</Text>
+            <MaterialIcons name="touch-app" size={26} color="#B2FF59" />
           </View>
+
           {botoes.map((item) => (
-            <View key={item.id} style={styles.item}>
-              <Text style={styles.endereco}>{item.dia}</Text>
-              <Text style={styles.horario}>{item.horario}</Text>
+            <View key={item.id} style={styles.itemRow}>
+              <Text style={styles.textPrimary}>{item.dia}</Text>
+              <Text style={styles.textSecondary}>{item.horario}</Text>
             </View>
           ))}
-          <View style={styles.verMaisContainer}>
-            <TouchableOpacity onPress={() => navigation.navigate('HistoricoBotao')}>
-              <Text style={styles.verMais}>Ver mais</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
 
-      {/* Rodapé */}
-      
+          <TouchableOpacity 
+            style={styles.moreButton} 
+            onPress={() => navigation.navigate('HistoricoBotao')}
+          >
+            <Text style={styles.moreText}>Ver mais</Text>
+          </TouchableOpacity>
+        </View>
+
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { 
-    flex: 1, 
-    backgroundColor: '#011a1f', // cor de fundo única
-    paddingTop: 30, // adicionado: distância do topo aplicada em toda a tela
+    flex: 1,
+    backgroundColor: '#011a1f',
+    paddingTop: 40,
   },
+
+  // --- Cabeçalho ---
   header: {
     flexDirection: 'row',
+    paddingHorizontal: 22,
+    paddingBottom: 10,
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    marginTop: 0, // ajustado: removido margin extra para não somar com paddingTop
-    backgroundColor: '#011a1f', // garante fundo igual
   },
-  title: { color: 'white', fontSize: 20, fontWeight: 'bold' },
-  scroll: { flex: 1, paddingHorizontal: 20 },
-  section: { marginBottom: 30, marginTop: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionTitle: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-  item: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
-  endereco: { color: 'white', fontSize: 14 },
-  horario: { color: '#ffffffff', fontSize: 14 },
-  verMaisContainer: {
-    alignItems: 'flex-end',
-    marginTop: 10,
+  title: { color: 'white', fontSize: 26, fontWeight: '700' },
+
+  // Scroll geral
+  scroll: { paddingHorizontal: 18 },
+
+  // --- Cards mais modernos ---
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    padding: 18,
+    borderRadius: 18,
+    marginBottom: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  verMais: { color: '#818181', marginTop: 0 },
-  footer: {
+
+  cardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  cardTitle: { 
+    color: 'white',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+
+  // itens da lista
+  itemRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    backgroundColor: '#011a1f',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
+
+  textPrimary: { color: '#e8e8e8', fontSize: 14, flex: 1, paddingRight: 10 },
+  textSecondary: { color: '#ffffffff', fontSize: 14, fontWeight: '600' },
+
+  // botao ver mais
+  moreButton: { marginTop: 10, alignSelf: 'flex-end' },
+  moreText: { color: '#B2FF59', fontSize: 14, textDecorationLine: 'underline' },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Linking, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Linking, Alert, Vibration } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Speech from 'expo-speech';
@@ -10,33 +10,63 @@ export default function Inicio() {
   const [address, setAddress] = useState('');
   const [brTime, setBrTime] = useState('');
   const [destCoords, setDestCoords] = useState(null);
-  const [destName, setDestName] = useState('Terminal Rodoviaria Caçapava - Caçapava');
   const [distanceStr, setDistanceStr] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const [lastCommand, setLastCommand] = useState('');
+  const [selectedDestination, setSelectedDestination] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Coordenadas corrigidas para Caçapava-SP
   const predefinedLocations = {
     'Supermercado Shibata': { 
       latitude: -23.1015,
       longitude: -45.7068,
-      query: 'Supermercado Shibata, Caçapava, São Paulo'
+      query: 'Supermercado Shibata, Caçapava, São Paulo',
+      displayName: 'Supermercado Shibata'
     },
     'Praça da Bandeira': { 
       latitude: -23.1003,
       longitude: -45.7059,
-      query: 'Praça da Bandeira, Caçapava, São Paulo'
+      query: 'Praça da Bandeira, Caçapava, São Paulo',
+      displayName: 'Praça da Bandeira'
     },
     'Igreja Matriz': { 
-      latitude: -23.1008, // COORDENADA CORRIGIDA
-      longitude: -45.7055, // COORDENADA CORRIGIDA
-      query: 'Igreja Matriz São João Batista - Paróquia Nossa Senhora d´Ajuda, Praça Dr. Pedro de Toledo, s/n - Centro, Caçapava - SP, 12281-500'
+      latitude: -23.1008,
+      longitude: -45.7055,
+      query: 'Igreja Matriz São João Batista - Paróquia Nossa Senhora d´Ajuda, Praça Dr. Pedro de Toledo, s/n - Centro, Caçapava - SP, 12281-500',
+      displayName: 'Igreja Matriz'
     },
     'Terminal Rodoviária': {
       latitude: -23.1021,
       longitude: -45.7043,
-      query: 'Terminal Rodoviaria Caçapava, Caçapava, Brasil'
+      query: 'Terminal Rodoviaria Caçapava, Caçapava, Brasil',
+      displayName: 'Terminal Rodoviária'
     }
+  };
+
+  // Função para falar com feedback tátil
+  const speak = async (text, options = {}) => {
+    if (isSpeaking) {
+      await Speech.stop();
+    }
+    
+    setIsSpeaking(true);
+    Vibration.vibrate(50); // Feedback tátil
+    
+    return new Promise((resolve) => {
+      Speech.speak(text, {
+        language: 'pt-BR',
+        pitch: 1.0,
+        rate: 0.9,
+        ...options,
+        onDone: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+        onError: () => {
+          setIsSpeaking(false);
+          resolve();
+        }
+      });
+    });
   };
 
   // Função utilitária para formatar placemark do expo-location
@@ -62,10 +92,12 @@ export default function Inicio() {
         console.log('Permissão negada para acessar localização');
         coords = { latitude: -23.099, longitude: -45.707 };
         setLocation({ coords });
+        // REMOVIDO: fala automática quando permissão é negada
       } else {
         let loc = await Location.getCurrentPositionAsync({});
         coords = loc.coords;
         setLocation(loc);
+        // REMOVIDO: fala automática quando localização é obtida
       }
 
       // Reverse geocoding: mobile via expo-location, web via Nominatim (OpenStreetMap)
@@ -91,7 +123,9 @@ export default function Inicio() {
         } else {
           const placemarks = await Location.reverseGeocodeAsync(coords);
           if (placemarks && placemarks.length > 0) {
-            setAddress(formatPlacemark(placemarks[0]));
+            const formattedAddress = formatPlacemark(placemarks[0]);
+            setAddress(formattedAddress);
+            // REMOVIDO: fala automática do endereço
           }
         }
         // Geocode do destino (Terminal) para obter coordenadas
@@ -104,7 +138,6 @@ export default function Inicio() {
             const r = await s.json();
             if (r && r.length > 0) {
               setDestCoords({ latitude: parseFloat(r[0].lat), longitude: parseFloat(r[0].lon) });
-              setDestName(r[0].display_name || destName);
             } else {
               // Usar coordenadas predefinidas se a busca falhar
               setDestCoords(predefinedLocations['Terminal Rodoviária']);
@@ -178,22 +211,13 @@ export default function Inicio() {
     }
   }, [location, destCoords]);
   
-  // abre rota no Google Maps (web abre em nova aba)
-  const openRoute = () => {
-    if (!location || !location.coords || !destCoords) return;
-    const origin = `${location.coords.latitude},${location.coords.longitude}`;
-    const destination = `${destCoords.latitude},${destCoords.longitude}`;
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
-    if (Platform.OS === 'web') {
-      window.open(url, '_blank');
-    } else {
-      Linking.openURL(url);
-    }
-  };
-  
   // Adicione a função para abrir rotas para locais específicos
-  const openRouteTo = async (query) => {
+  const openRouteTo = async (query, displayName) => {
     try {
+      Vibration.vibrate(100); // Feedback tátil ao tocar
+      
+      await speak(`Calculando rota para ${displayName}`);
+
       let coords;
       if (Platform.OS === 'web') {
         const response = await fetch(
@@ -224,18 +248,27 @@ export default function Inicio() {
           }
         }
       }
-      if (coords) {
+      
+      if (coords && location && location.coords) {
         const origin = `${location.coords.latitude},${location.coords.longitude}`;
         const destination = `${coords.latitude},${coords.longitude}`;
         const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
+        
+        setSelectedDestination(displayName);
+        
+        await speak(`Rota para ${displayName} calculada. Abrindo mapa de navegação.`);
+        
         if (Platform.OS === 'web') {
           window.open(url, '_blank');
         } else {
           Linking.openURL(url);
         }
+      } else {
+        await speak('Não foi possível calcular a rota. Verifique sua conexão e tente novamente.');
       }
     } catch (err) {
       console.log('Erro ao abrir rota:', err);
+      await speak('Erro ao abrir rota. Tente novamente.');
     }
   };
   
@@ -256,81 +289,29 @@ export default function Inicio() {
     return distance < 1000 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)} km`;
   };
 
-  // Simulação de reconhecimento de voz (para demonstração)
-  const simulateVoiceRecognition = () => {
-    setIsListening(true);
-    setLastCommand('');
-    
-    setTimeout(() => {
-      setIsListening(false);
-      
-      const commands = [
-        'Abrir rota para o supermercado',
-        'Navegar até a praça',
-        'Ir para a igreja',
-        'Mostrar caminho para o terminal'
-      ];
-      
-      const randomCommand = commands[Math.floor(Math.random() * commands.length)];
-      setLastCommand(randomCommand);
-      processVoiceCommand(randomCommand);
-    }, 2000);
-  };
-
-  // Processa o comando de voz
-  const processVoiceCommand = (command) => {
-    const lowerCommand = command.toLowerCase();
-
-    const voiceCommands = {
-      'supermercado': predefinedLocations['Supermercado Shibata'].query,
-      'shibata': predefinedLocations['Supermercado Shibata'].query,
-      'praça': predefinedLocations['Praça da Bandeira'].query,
-      'bandeira': predefinedLocations['Praça da Bandeira'].query,
-      'igreja': predefinedLocations['Igreja Matriz'].query,
-      'matriz': predefinedLocations['Igreja Matriz'].query,
-      'terminal': predefinedLocations['Terminal Rodoviária'].query,
-      'rodoviária': predefinedLocations['Terminal Rodoviária'].query,
-      'rodoviaria': predefinedLocations['Terminal Rodoviária'].query
-    };
-
-    const matchedCommand = Object.keys(voiceCommands).find(key => 
-      lowerCommand.includes(key)
+  // Função para falar instruções completas
+  const speakInstructions = async () => {
+    await speak(
+      'Bem vindo ao Secure Step. ' +
+      'Aplicativo de navegação para pessoas com deficiência visual. ' +
+      'Toque em qualquer destino na tela para abrir a rota no mapa. ' +
+      'Destinos disponíveis: Terminal Rodoviária, Supermercado Shibata, Praça da Bandeira e Igreja Matriz. ' +
+      'Cada toque fornecerá feedback por voz e vibração.',
+      { rate: 0.85 }
     );
-
-    if (matchedCommand) {
-      const destination = voiceCommands[matchedCommand];
-      
-      Speech.speak(`Abrindo rota para ${matchedCommand}`, {
-        language: 'pt-BR',
-        pitch: 1.0,
-        rate: 0.8
-      });
-      
-      Alert.alert('Comando reconhecido', `Navegando para: ${matchedCommand}`);
-
-      // Adicione um atraso de 2 segundos antes de abrir o Google Maps
-      setTimeout(() => {
-        openRouteTo(destination);
-      }, 2000);
-    } else {
-      Speech.speak('Comando não reconhecido. Tente novamente.', {
-        language: 'pt-BR'
-      });
-      Alert.alert(
-        'Comando não reconhecido', 
-        `Comando: "${command}"\n\nComandos disponíveis: supermercado, praça, igreja, terminal`
-      );
-    }
   };
 
-  // Função principal de reconhecimento de voz
-  const handleVoiceCommand = async () => {
-    if (isListening) {
-      setIsListening(false);
-      return;
+  // Função para falar informações da localização atual
+  const speakLocationInfo = async () => {
+    if (location && address) {
+      await speak(
+        `Localização atual: ${address}. ` +
+        `Horário: ${brTime}. ` +
+        `Distância até o Terminal Rodoviária: ${distanceStr || 'calculando'}.`
+      );
+    } else {
+      await speak('Carregando informações de localização...');
     }
-
-    simulateVoiceRecognition();
   };
 
   const { MapView, Marker } = MapComponents;
@@ -340,24 +321,29 @@ export default function Inicio() {
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={true}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Header com acessibilidade */}
+        <TouchableOpacity 
+          style={styles.header} 
+          onPress={speakInstructions}
+          accessible={true}
+          accessibilityLabel="Secure Step. Toque duas vezes para ouvir instruções completas"
+        >
           <Ionicons name="eye-outline" size={30} color="#fff" />
           <Text style={styles.logo}>SecureStep</Text>
-        </View>
+        </TouchableOpacity>
         
         <Text style={styles.title}>Localização</Text>
 
-        {/* Localização atual */}
+        {/* Localização atual - REMOVIDA a fala automática ao tocar */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Localização atual</Text>
 
           {location ? (
             Platform.OS === 'web' ? (
               <iframe
-                title="Mapa"
+                title="Mapa da localização atual"
                 style={{
                   width: '100%',
                   height: 180,
@@ -379,7 +365,6 @@ export default function Inicio() {
                     longitudeDelta: 0.01,
                   }}
                 >
-                  {/* Marcador da localização atual */}
                   <Marker
                     coordinate={{
                       latitude: location.coords.latitude,
@@ -401,80 +386,79 @@ export default function Inicio() {
           </View>
         </View>
 
-        {/* Reconhecimento de Voz */}
+        {/* Assistência por Voz */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Comando de Voz</Text>
-          <TouchableOpacity 
-            style={[
-              styles.micButton, 
-              isListening && styles.listeningButton
-            ]} 
-            onPress={handleVoiceCommand}
-          >
-            <MaterialIcons 
-              name={isListening ? "mic-off" : "keyboard-voice"} 
-              size={32} 
-              color="white" 
-            />
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Assistência por Voz</Text>
+          
+          <View style={styles.voiceButtonsContainer}>
+            <TouchableOpacity 
+              style={styles.voiceButton} 
+              onPress={speakInstructions}
+              accessible={true}
+              accessibilityLabel="Ouvir instruções completas do aplicativo"
+            >
+              <MaterialIcons 
+                name="record-voice-over" 
+                size={32} 
+                color="white" 
+              />
+              <Text style={styles.buttonText}>Instruções</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.voiceButton} 
+              onPress={speakLocationInfo}
+              accessible={true}
+              accessibilityLabel="Ouvir informações da localização atual"
+            >
+              <MaterialIcons 
+                name="location-on" 
+                size={32} 
+                color="white" 
+              />
+              <Text style={styles.buttonText}>Localização</Text>
+            </TouchableOpacity>
+          </View>
+          
           <Text style={styles.voiceStatus}>
-            {isListening ? 'Ouvindo... Fale agora!' : 'Toque no microfone e dite um comando'}
+            Toque nos botões para navegação por voz
           </Text>
-          {lastCommand ? (
-            <Text style={styles.lastCommand}>Último comando: "{lastCommand}"</Text>
+          
+          {selectedDestination ? (
+            <Text style={styles.selectedDestination}>
+              Destino selecionado: {selectedDestination}
+            </Text>
           ) : null}
         </View>
 
-        {/* Locais mais frequentados */}
+        {/* Locais mais frequentados com acessibilidade */}
         <View style={[styles.section, { marginTop: 7 }]}>
           <Text style={styles.sectionTitle}>Locais mais frequentados</Text>
 
-          {/* Terminal Rodoviária */}
-          <TouchableOpacity onPress={openRoute} style={{ marginTop: 9 }}>
-            <View style={styles.infoRow}>
-              <Text style={styles.endereco}>Terminal Rodoviária</Text>
-              <Text style={styles.distancia}>{distanceStr || '...'} </Text>
-            </View>
-            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
-              Toque para abrir rota no Maps
-            </Text>
-          </TouchableOpacity>
-
-          {/* Supermercado Shibata */}
-          <TouchableOpacity onPress={() => openRouteTo(predefinedLocations['Supermercado Shibata'].query)} style={{ marginTop: 20 }}>
-            <View style={styles.infoRow}>
-              <Text style={styles.endereco}>Supermercado Shibata</Text>
-              <Text style={styles.distancia}>{calculateDistance('Supermercado Shibata') || '...'} </Text>
-            </View>
-            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
-              Toque para abrir rota no Maps
-            </Text>
-          </TouchableOpacity>
-
-          {/* Praça da Bandeira */}
-          <TouchableOpacity onPress={() => openRouteTo(predefinedLocations['Praça da Bandeira'].query)} style={{ marginTop: 20 }}>
-            <View style={styles.infoRow}>
-              <Text style={styles.endereco}>Praça da Bandeira</Text>
-              <Text style={styles.distancia}>{calculateDistance('Praça da Bandeira') || '...'} </Text>
-            </View>
-            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
-              Toque para abrir rota no Maps
-            </Text>
-          </TouchableOpacity>
-
-          {/* Igreja Matriz */}
-          <TouchableOpacity onPress={() => openRouteTo(predefinedLocations['Igreja Matriz'].query)} style={{ marginTop: 20 }}>
-            <View style={styles.infoRow}>
-              <Text style={styles.endereco}>Igreja Matriz</Text>
-              <Text style={styles.distancia}>{calculateDistance('Igreja Matriz') || '...'} </Text>
-            </View>
-            <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
-              Toque para abrir rota no Maps
-            </Text>
-          </TouchableOpacity>
+          {Object.entries(predefinedLocations).map(([key, locationInfo]) => (
+            <TouchableOpacity 
+              key={key}
+              onPress={() => openRouteTo(locationInfo.query, locationInfo.displayName)} 
+              style={styles.locationButton}
+              accessible={true}
+              accessibilityLabel={`${locationInfo.displayName}. Distância: ${calculateDistance(key) || 'calculando'}. Toque duas vezes para abrir rota`}
+            >
+              <View style={styles.infoRow}>
+                <View style={styles.locationTextContainer}>
+                  <MaterialIcons name="place" size={20} color="#9FE870" />
+                  <Text style={styles.endereco}>{locationInfo.displayName}</Text>
+                </View>
+                <Text style={styles.distancia}>{calculateDistance(key) || '...'} </Text>
+              </View>
+              <Text style={styles.routeHint}>
+                Toque para abrir rota no Maps
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Espaço extra no final para melhor scroll */}
+        {/* REMOVIDA: Seção de informações de acessibilidade */}
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </View>
@@ -492,13 +476,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: 50,
     paddingHorizontal: 20,
-    paddingBottom: 30, // Adicionado padding no final
+    paddingBottom: 30,
   },
   header: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center',
     marginBottom: 20,
+    padding: 10,
+    borderRadius: 10,
   },
   logo: {
     color: 'white',
@@ -515,11 +501,15 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 25,
+    padding: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
   },
   sectionTitle: {
     color: '#94A3B8',
     fontSize: 14,
     marginBottom: 10,
+    fontWeight: '600',
   },
   mapa: {
     width: '100%',
@@ -532,30 +522,47 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  locationTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   endereco: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     flex: 1,
     marginRight: 10,
+    marginLeft: 8,
+    fontWeight: '500',
   },
   hora: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   distancia: {
     color: '#9FE870',
     fontWeight: 'bold',
+    fontSize: 14,
   },
-  micButton: {
-    alignSelf: 'center',
-    backgroundColor: '#D32F2F',
-    padding: 18,
-    borderRadius: 50,
+  voiceButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     marginBottom: 10,
     marginTop: 10,
   },
-  listeningButton: {
-    backgroundColor: '#388E3C',
+  voiceButton: {
+    backgroundColor: '#1976D2',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    minWidth: 100,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 5,
+    textAlign: 'center',
   },
   voiceStatus: {
     color: 'white',
@@ -563,14 +570,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 5,
   },
-  lastCommand: {
-    color: '#9FE870',
+  selectedDestination: {
+    color: '#4FC3F7',
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 8,
+    fontWeight: '500',
+  },
+  locationButton: {
+    marginTop: 15,
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#9FE870',
+  },
+  routeHint: {
+    color: '#94A3B8',
+    fontSize: 12,
+    marginTop: 6,
     fontStyle: 'italic',
   },
   bottomSpacer: {
-    height: 20, // Espaço extra no final para melhor scroll
+    height: 30,
   },
 });
