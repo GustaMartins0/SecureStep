@@ -1,10 +1,33 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 export default function Cadastro({ navigation }) {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signUp({ email, password: senha });
+      if (error) {
+        Alert.alert('Erro no cadastro', error.message);
+      } else {
+        // opcional: criar perfil (se o usuário já estiver confirmado)
+        if (data?.user?.id) {
+          await supabase.from('profiles').upsert({ id: data.user.id, full_name: nome });
+        }
+        Alert.alert('Cadastro realizado', 'Verifique seu email para confirmar (se aplicável).');
+        navigation.navigate('Login');
+      }
+    } catch (err) {
+      Alert.alert('Erro', String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -31,6 +54,8 @@ export default function Cadastro({ navigation }) {
         placeholderTextColor="#ccc"
         value={email}
         onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
 
       {/* Campo Senha */}
@@ -47,9 +72,10 @@ export default function Cadastro({ navigation }) {
       {/* Botão Cadastrar */}
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => navigation.navigate('Login')}
+        onPress={handleSignup}
+        disabled={loading}
       >
-        <Text style={styles.buttonText}>Cadastrar</Text>
+        {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.buttonText}>Cadastrar</Text>}
       </TouchableOpacity>
 
       {/* Voltar para Login */}

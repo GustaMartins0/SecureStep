@@ -1,9 +1,28 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 export default function Login({ navigation }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
+      if (error) {
+        Alert.alert('Erro ao entrar', error.message);
+      } else {
+        // login bem-sucedido
+        navigation.replace('MainTabs');
+      }
+    } catch (err) {
+      Alert.alert('Erro', String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -19,6 +38,8 @@ export default function Login({ navigation }) {
         placeholderTextColor="#ccc"
         value={email}
         onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
 
       {/* Campo de Senha */}
@@ -45,9 +66,10 @@ export default function Login({ navigation }) {
       {/* Botão Entrar */}
       <TouchableOpacity
         style={styles.button}
-        onPress={() => navigation.replace('MainTabs')}
+        onPress={handleLogin}
+        disabled={loading}
       >
-        <Text style={styles.buttonText}>Entrar</Text>
+        {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.buttonText}>Entrar</Text>}
       </TouchableOpacity>
     </View>
   );

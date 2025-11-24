@@ -1,24 +1,37 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons'; // importação adicionada
 import { useNavigation } from '@react-navigation/native'; // importação adicionada
-
-const dados = [
-  { id: '1', titulo: 'Hoje - 10/09', hora: '16:30' },
-  { id: '2', titulo: 'Ontem - 09/09', hora: '09:00' },
-  { id: '3', titulo: 'Segunda - 03/09', hora: '03:30' },
-  { id: '4', titulo: 'Dia - 29/08', hora: '02:30' },
-  { id: '5', titulo: 'Dia - 26/08', hora: '17:00' },
-  { id: '6', titulo: 'Dia - 25/08', hora: '13:30' },
-  { id: '7', titulo: 'Dia - 20/08', hora: '11:20' },
-];
+import { supabase } from '../lib/supabase';
 
 export default function HistoricoBotao() {
   const navigation = useNavigation(); // hook de navegação
+  const [dados, setDados] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchButtons = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('button_history')
+        .select('*')
+        .order('occurred_at', { ascending: false })
+        .limit(100);
+      if (error) console.log('Erro ao carregar historico de botões', error);
+      if (mounted && data) {
+        setDados(data.map(d => ({ id: d.id, titulo: d.title || 'Evento', hora: d.occurred_at ? new Date(d.occurred_at).toLocaleTimeString() : '' })));
+      }
+      setLoading(false);
+    };
+    fetchButtons();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <View style={styles.container}>
+      {loading && <ActivityIndicator size="large" color="#9FE870" />}
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

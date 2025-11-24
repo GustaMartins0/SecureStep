@@ -42,6 +42,31 @@ export default function Inicio() {
     }
   };
 
+  // If present, fetch predefined locations from Supabase (overrides local predefinedLocations)
+  useEffect(() => {
+    let mounted = true;
+    const fetchPredefined = async () => {
+      try {
+        const { data, error } = await (await import('../lib/supabase')).supabase
+          .from('predefined_locations')
+          .select('*')
+          .order('created_at', { ascending: true });
+        if (!error && data && mounted && data.length > 0) {
+          const map = {};
+          data.forEach((d) => {
+            map[d.display_name] = { latitude: d.latitude, longitude: d.longitude, query: d.query, displayName: d.display_name };
+          });
+          // merge with local predefinedLocations (local keys preserved)
+          Object.assign(predefinedLocations, map);
+        }
+      } catch (err) {
+        console.log('Erro ao buscar predefined_locations', err);
+      }
+    };
+    fetchPredefined();
+    return () => { mounted = false; };
+  }, []);
+
   // Função para falar com feedback tátil
   const speak = async (text, options = {}) => {
     if (isSpeaking) {

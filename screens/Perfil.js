@@ -1,9 +1,55 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, SafeAreaView, Platform, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, SafeAreaView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../lib/supabase';
 
 export default function Perfil({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const {
+          data: { user: authUser },
+          error: userError,
+        } = await supabase.auth.getUser();
+        if (userError) {
+          console.log('Erro ao obter usuário auth:', userError.message || userError);
+        }
+        if (!authUser) {
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+        if (mounted) setUser(authUser);
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .maybeSingle();
+        if (error) {
+          console.log('Erro ao carregar profile:', error.message || error);
+        } else if (mounted) {
+          setProfile(data || null);
+        }
+      } catch (err) {
+        console.log('Erro ao carregar dados do perfil:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleNotificationResponse = (response) => {
     setModalVisible(false);
@@ -32,7 +78,13 @@ export default function Perfil({ navigation }) {
           {/* Avatar com ícone */}
           <View style={styles.avatarContainer}>
             <View style={styles.avatarBackground}>
-              <Ionicons name="person" size={80} color="#022b35" />
+              {loading ? (
+                <ActivityIndicator size={48} color="#022b35" />
+              ) : profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={{ width: 96, height: 96, borderRadius: 48 }} />
+              ) : (
+                <Ionicons name="person" size={80} color="#022b35" />
+              )}
             </View>
             <View style={styles.editIcon}>
               <Ionicons name="camera" size={20} color="#fff" />
@@ -44,9 +96,9 @@ export default function Perfil({ navigation }) {
             <View style={styles.infoItem}>
               <View style={styles.infoHeader}>
                 <Ionicons name="person-outline" size={18} color="#9FE870" />
-                <Text style={styles.infoLabel}>Nome de usuário</Text>
+                <Text style={styles.infoLabel}>Nome</Text>
               </View>
-              <Text style={styles.infoValue}>Gustavo Martins</Text>
+              <Text style={styles.infoValue}>{loading ? 'Carregando...' : profile?.full_name || user?.user_metadata?.full_name || user?.email || 'Nome não definido'}</Text>
             </View>
 
             <View style={styles.separator} />
@@ -56,7 +108,7 @@ export default function Perfil({ navigation }) {
                 <Ionicons name="mail-outline" size={18} color="#9FE870" />
                 <Text style={styles.infoLabel}>Email</Text>
               </View>
-              <Text style={styles.infoValue}>martins@martins.com</Text>
+              <Text style={styles.infoValue}>{loading ? 'Carregando...' : user?.email || 'Email não disponível'}</Text>
             </View>
 
             {/* seção "Telefone" removida */}
@@ -101,7 +153,14 @@ export default function Perfil({ navigation }) {
         {/* Botão sair */}
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => navigation.replace('Login')}
+          onPress={async () => {
+            try {
+              await supabase.auth.signOut();
+            } catch (err) {
+              console.log('Erro ao deslogar', err);
+            }
+            navigation.replace('Login');
+          }}
         >
           <Ionicons name="log-out-outline" size={22} color="#e53935" />
           <Text style={styles.logoutText}>Sair da Conta</Text>

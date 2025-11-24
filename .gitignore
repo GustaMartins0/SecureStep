@@ -12,3 +12,5 @@ yarn-error.log*
 # Build
 dist/
 build/
+.expo/
+.expo

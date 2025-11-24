@@ -3,7 +3,8 @@
     "name": "SecureStep",
     "slug": "securestep",
     "android": {
-      "package": "com.anonymous.securestep"
+      "package": "com.anonymous.securestep",
+      "jsEngine": "jsc"
     },
     "extra": {
       "eas": {

@@ -1,26 +1,46 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native'; // importação adicionada
 
-const dados = [
-  { id: '1', endereco: 'Rua Manoel, Bairro Residencial Galo Preto', hora: '' },
-  { id: '2', endereco: 'Rua Simpatia, Bairro Exemplos', hora: '16:30' },
-  { id: '3', endereco: 'Rua exemplo 123, Bairro exemplo', hora: '16:30' },
-  { id: '4', endereco: 'Rua Simpatia, Bairro Exemplos', hora: '16:30' },
-  { id: '5', endereco: 'Rua exemplo 123, Bairro exemplo', hora: '16:30' },
-  { id: '6', endereco: 'Rua exemplo 123, Bairro exemplo', hora: '16:30' },
-  { id: '7', endereco: 'Rua exemplo 123, Bairro exemplo', hora: '16:30' },
-  { id: '8', endereco: 'Rua exemplo 123, Bairro exemplo', hora: '16:30' },
-  { id: '9', endereco: 'Rua exemplo 123, Bairro exemplo', hora: '16:30' },
-  { id: '10', endereco: 'Rua exemplo 123, Bairro exemplo', hora: '16:30' },
-];
+import { supabase } from '../lib/supabase';
 
 export default function HistoricoLocalizacao() {
   const navigation = useNavigation(); // hook de navegação
+  const [dados, setDados] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchHistory = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('location_history')
+        .select('*')
+        .order('occurred_at', { ascending: false })
+        .limit(100);
+      if (error) {
+        console.log('Erro ao buscar histórico de localização:', error);
+      } else if (mounted) {
+        setDados(
+          data.map((d) => ({
+            id: d.id,
+            endereco: d.address_text || d.metadata?.display_name || 'Endereço desconhecido',
+            hora: d.occurred_at ? new Date(d.occurred_at).toLocaleTimeString() : '',
+          }))
+        );
+      }
+      setLoading(false);
+    };
+    fetchHistory();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
+      {loading && <ActivityIndicator size="large" color="#9FE870" />}
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

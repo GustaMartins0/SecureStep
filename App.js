@@ -1,5 +1,5 @@
 import React from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -19,6 +19,7 @@ const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -26,13 +27,14 @@ function MainTabs() {
         tabBarShowLabel: false,
         tabBarStyle: {
           position: 'absolute',
-          bottom: 20,
+          bottom: 0,
           left: 20,
           right: 20,
           elevation: 5,
           backgroundColor: '#000',
           borderRadius: 15,
-          height: 60,
+          height: 60 + insets.bottom, // include safe area so content isn't hidden
+          paddingBottom: insets.bottom, // keep icons above system navigation
         },
         tabBarActiveTintColor: '#fff',
         tabBarInactiveTintColor: '#888',
